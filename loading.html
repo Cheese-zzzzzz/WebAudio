@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Загрузка сервера</title>
+    <style>
+        /* Общие стили для заднего фона */
+        body {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background: #121214;
+            color: #ffffff;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            /* Замените ссылку ниже на фоновое изображение вашего сервера */
+            background-image: linear-gradient(rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.6)), url('https://unsplash.com');
+            background-size: cover;
+            background-position: center;
+        }
+
+        /* Контейнер по центру */
+        .loading-container {
+            text-align: center;
+            background: rgba(20, 20, 25, 0.85);
+            padding: 40px 60px;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            max-width: 600px;
+            width: 100%;
+        }
+
+        /* Название сервера */
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 5px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: #ffaa00; /* Фирменный цвет */
+        }
+
+        /* Описание сервера */
+        .subtitle {
+            font-size: 1rem;
+            color: #aaaaaa;
+            margin-bottom: 30px;
+        }
+
+        /* Блок с информацией о загрузке */
+        .info-box {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 35px;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 15px;
+            border-radius: 8px;
+            text-align: left;
+        }
+
+        .info-item {
+            font-size: 0.95rem;
+        }
+
+        .info-item span {
+            color: #ffaa00;
+            font-weight: bold;
+        }
+
+        /* Прогресс-бар */
+        .progress-container {
+            width: 100%;
+            background-color: rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            margin-bottom: 15px;
+            overflow: hidden;
+        }
+
+        .progress-bar {
+            width: 0%;
+            height: 12px;
+            background: linear-gradient(90deg, #ffaa00, #ff6600);
+            border-radius: 20px;
+            transition: width 0.3s ease;
+        }
+
+        /* Текущий статус загрузки (какой файл качается) */
+        #status {
+            font-size: 0.9rem;
+            color: #dddddd;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            height: 20px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="loading-container">
+        <!-- Название и описание сервера -->
+        <h1 id="servername">MY SUPER RPG SERVER</h1>
+        <div class="subtitle">Добро пожаловать! Приятной игры.</div>
+
+        <!-- Информация от игры -->
+        <div class="info-box">
+            <div class="info-item">Игрок: <span id="player-name">Загрузка...</span></div>
+            <div class="info-item">Карта: <span id="map-name">Загрузка...</span></div>
+            <div class="info-item">Осталось файлов: <span id="files-needed">0</span></div>
+            <div class="info-item">Режим: <span>Sandbox</span></div> <!-- Укажите ваш режим вручную, если нужно -->
+        </div>
+
+        <!-- Индикатор загрузки -->
+        <div class="progress-container">
+            <div class="progress-bar" id="progress-bar"></div>
+        </div>
+        
+        <!-- Текст загрузки конкретного файла -->
+        <div id="status">Подключение к серверу...</div>
+    </div>
+
+    <!-- API Скрипт Garry's Mod -->
+    <script>
+        let totalFiles = 0;
+        let neededFiles = 0;
+
+        // Вызывается в самом начале, передает базовую информацию
+        function GameDetails(servername, serverurl, mapname, maxplayers, steamid, gamemode, volume, language) {
+            document.getElementById('map-name').innerText = mapname;
+            // Раскомментируйте строку ниже, если хотите брать название сервера из настроек хостинга:
+            // document.getElementById('servername').innerText = servername;
+        }
+
+        // Вызывается, когда игра узнает, сколько файлов нужно скачать
+        function SetFilesNeeded(needed) {
+            neededFiles = needed;
+            if (totalFiles === 0) {
+                totalFiles = needed;
+            }
+            document.getElementById('files-needed').innerText = needed;
+            updateProgressBar();
+        }
+
+        // Вызывается при изменении статуса (например, "Downloading models/player.mdl")
+        function SetStatusChanged(status) {
+            document.getElementById('status').innerText = status;
+            
+            // Если файл скачался, уменьшаем количество нужных файлов
+            if (status.substring(0, 11) === "Downloading") {
+                neededFiles = Math.max(0, neededFiles - 1);
+                document.getElementById('files-needed').innerText = neededFiles;
+                updateProgressBar();
+            }
+        }
+
+        // Вызывается, когда игра передает имя и аватар игрока
+        function SetPlayerName(name) {
+            document.getElementById('player-name').innerText = name;
+        }
+
+        // Функция расчета и анимации прогресс-бара
+        function updateProgressBar() {
+            if (totalFiles === 0) return;
+            
+            let downloaded = totalFiles - neededFiles;
+            let percentage = (downloaded / totalFiles) * 100;
+            
+            // Ограничиваем от 0 до 100
+            percentage = Math.min(100, Math.max(0, percentage));
+            
+            document.getElementById('progress-bar').style.width = percentage + '%';
+        }
+    </script>
+</body>
+</html>
